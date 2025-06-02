@@ -5931,6 +5931,20 @@ extern char GEOS_DLL *GEOSGeoJSONWriter_writeGeometry(
 
 #endif /* #ifndef GEOS_USE_ONLY_R_API */
 
+// Fueled
+GEOSGeometry* GEOSSnapIfNeededOverlay_r(GEOSContextHandle_t handle, const GEOSGeometry* g1, const GEOSGeometry* g2, int opCode);
+GEOSGeometry* GEOSCustomFactory_createPoint(double scale, int srid, double x, double y);
+GEOSGeometry* GEOSCustomFactory_createPolygon(double scale, int srid, const double* coords, int count);
+GEOSGeometry* GEOSCustomFactory_createLineString(double scale, int srid, const double* coords, int count);
+GEOSGeometry* GEOSCustomFactory_createSquareFenceGeometry(
+    double scale,
+    int srid,
+    double centreLat,
+    double centreLon,
+    double areaInMeters
+);
+GEOSGeometry* GEOSGeometryFixer_fix_r(GEOSContextHandle_t handle, const GEOSGeometry* g);
+
 /* ====================================================================== */
 /* DEPRECATIONS */
 /* ====================================================================== */
