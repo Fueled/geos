@@ -25,6 +25,9 @@
 #include <geos/io/GeoJSONWriter.h>
 #include <geos/operation/buffer/BufferParameters.h>
 #include <geos/util/Interrupt.h>
+#include <geos/geom/Geometry.h>
+#include <geos/operation/overlayng/OverlayNG.h>
+#include <geos/operation/overlay/snap/SnapOverlayOp.h>
 
 #include <stdexcept>
 #include <new>
@@ -1894,5 +1897,49 @@ extern "C" {
         return GEOSCoverageSimplifyVW_r(handle, input, tolerance, preserveBoundary);
     }
 
+    // Fueled helpers
+    GEOSGeometry* GEOSSnapIfNeededOverlay_r(GEOSContextHandle_t handle, const GEOSGeometry* g1, const GEOSGeometry* g2, int opCode) {
+	    try {
+		    using namespace geos::operation::overlay::snap;
+		    using namespace geos::operation::overlayng;
 
+		    auto geom1 = reinterpret_cast<const geos::geom::Geometry*>(g1);
+		    auto geom2 = reinterpret_cast<const geos::geom::Geometry*>(g2);
+
+		    // First attempt
+		    try {
+                auto result = OverlayNG::overlay(geom1, geom2, opCode);
+			    return reinterpret_cast<GEOSGeometry*>(result.release());
+		    } catch (...) {
+                // ⛑️ Fallback to SnapOverlayOp if OverlayNG fails
+			    auto result = SnapOverlayOp::overlayOp(*geom1, *geom2, opCode);
+			    return reinterpret_cast<GEOSGeometry*>(result.release());
+		    }
+	    } catch (...) {
+		    return nullptr;
+	    }
+    }
+
+    GEOSGeometry* GEOSCustomFactory_createPoint(double scale, int srid, double x, double y) {
+	auto pm = std::make_unique<geos::geom::PrecisionModel>(scale);
+	auto factory = geos::geom::GeometryFactory::create(pm.get(), srid);
+	auto coord = geos::geom::Coordinate(x, y);
+	auto point = factory->createPoint(coord);
+	return point.release();
+	}
+
+	GEOSGeometry* GEOSCustomFactory_createPolygon(double scale, int srid, const double* coords, int count) {
+		if (count < 4 || count % 2 != 0) return nullptr;
+
+		auto pm = std::make_unique<geos::geom::PrecisionModel>(scale);
+		auto factory = geos::geom::GeometryFactory::create(pm.get(), srid);
+
+		geos::geom::CoordinateSequence sequence;
+		for (int i = 0; i < count; i += 2) {
+			sequence.add(geos::geom::Coordinate(coords[i], coords[i + 1]));
+		}
+
+		auto polygon = factory->createPolygon(std::move(sequence));
+		return polygon.release();
+	}
 } /* extern "C" */
